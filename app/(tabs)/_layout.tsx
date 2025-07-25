@@ -1,3 +1,5 @@
+import { useAuth } from '@clerk/clerk-expo';
+import { Feather } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import * as React from 'react';
 import { Platform } from 'react-native';
@@ -13,6 +15,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { signOut } = useAuth();
 
   return (
     <Tabs
@@ -22,6 +25,15 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
         tabBarShowLabel: false, // Hide the tab labels
+        headerRight: () => (
+          <Feather
+            name="log-out"
+            size={22}
+            color={Colors[colorScheme ?? 'light'].tint}
+            style={{ paddingRight: 10 }}
+            onPress={() => signOut()}
+          />
+        ),
         tabBarStyle: Platform.select({
           ios: {
             // Use a transparent background on iOS to show the blur effect
