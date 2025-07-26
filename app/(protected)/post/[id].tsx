@@ -1,36 +1,78 @@
 import { Entypo, MaterialCommunityIcons, Octicons } from '@expo/vector-icons';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-    FlatList,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import comments from '@/assets/data/comments.json';
-import posts from '@/assets/data/posts.json';
-import PostListItem from '@/components/PostListItem';
+import PostListItem from '../../../components/PostListItem';
+import { Squircle } from '../../../components/ui/Squircle';
+import { supabase } from '../../../lib/supabase';
+import { Database } from '../../../types/supabase';
 
 export default function PostDetailed() {
   const { id } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
 
   const [comment, setComment] = useState<string>('');
-  const [isInputFocused, setIsInputFocused] = useState<boolean>(false);  const detailedPost = posts.find((post) => post.id === id);
-  const postComments = comments.filter(
-    (comment) => comment.post_id === detailedPost?.id
-  );
+  const [isInputFocused, setIsInputFocused] = useState<boolean>(false);
+  
+  const [post, setPost] = useState<Database['public']['Tables']['posts']['Row'] | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!detailedPost) {
-    return <Text>Post Not Found!</Text>;
+  useEffect(() => {
+    if (!id) return;
+    fetchPost();
+  }, [id]);
+
+  const fetchPost = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('posts')
+        .select('id, created_at, title, description, image, upvotes, nr_of_comments, user, group')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      setPost(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (error || !post) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text>{error || 'Post not found'}</Text>
+      </View>
+    );
   }
 
   return (
@@ -41,11 +83,21 @@ export default function PostDetailed() {
     >
       <FlatList
         ListHeaderComponent={
-          <PostListItem post={detailedPost} isDetailedPost />
+          <PostListItem post={post} isDetailedPost />
         }
-        data={postComments}
-        renderItem={({ item }) => (
-          <View style={styles.commentContainer}>
+        data={comments}
+        keyExtractor={(item: Comment) => item.id}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        renderItem={({ item }: { item: Comment }) => (
+          <Squircle 
+            style={styles.commentContainer}
+            radius={15}
+            shadowOpacity={0.08}
+            shadowRadius={4}
+          >
             <View style={styles.commentHeader}>
               <Image 
                 source={{ uri: item.user.image || "https://notjustdev-dummy.s3.us-east-2.amazonaws.com/avatars/3.jpg" }} 
@@ -68,44 +120,71 @@ export default function PostDetailed() {
                 <MaterialCommunityIcons name="arrow-down-bold-outline" size={18} color="#737373" />
               </View>
             </View>
-          </View>
+          </Squircle>
         )}
       />
       
       {/* Comment Input Section */}
-      <View style={[styles.inputContainer, { paddingBottom: insets.bottom }]}>
+      <Squircle 
+        style={[styles.inputContainer, { paddingBottom: insets.bottom }]}
+        radius={15}
+        shadowOpacity={0.15}
+        shadowRadius={5}
+        elevation={4}
+      >
         <TextInput
           placeholder="Join the conversation"
           value={comment}
           onChangeText={setComment}
           style={styles.input}
           multiline
+          maxLength={1000}
+          returnKeyType="done"
+          blurOnSubmit={true}
           onFocus={() => setIsInputFocused(true)}
           onBlur={() => setIsInputFocused(false)}
         />
-        {isInputFocused && (
-          <Pressable 
-            disabled={!comment} 
-            onPress={() => console.error('Pressed')} 
-            style={[
-              styles.replyButton,
-              { backgroundColor: !comment ? "lightgrey" : '#0d469b' }
-            ]}
-          >
-            <Text style={styles.replyButtonText}>Reply</Text>
-          </Pressable>
-        )}
-      </View>
+        <Pressable 
+          disabled={!comment.trim()}
+          onPress={() => {
+            // Here you would typically make an API call to post the comment
+            // For now we'll just clear the input
+            setComment('');
+            setIsInputFocused(false);
+          }}
+          style={[
+            styles.replyButton,
+            { backgroundColor: !comment.trim() ? "lightgrey" : '#0d469b' }
+          ]}
+        >
+          <Text style={styles.replyButtonText}>Reply</Text>
+        </Pressable>
+      </Squircle>
     </KeyboardAvoidingView>
   );
 }
+
+type Comment = {
+  id: string;
+  comment: string;
+  created_at: string;
+  upvotes: number;
+  user: {
+    id: string;
+    name: string;
+    image: string | null;
+  };
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   commentContainer: {
-    backgroundColor: 'white',
     marginTop: 10,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -151,19 +230,7 @@ const styles = StyleSheet.create({
     color: '#737373',
   },
   inputContainer: {
-    borderBottomWidth: 1,
-    borderBottomColor: 'lightgrey',
     padding: 10,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: -3,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 4,
   },
   input: {
     backgroundColor: '#E4E4E4',

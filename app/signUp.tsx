@@ -64,7 +64,7 @@ export default function SignUpPage() {
       <Button title="Sign Up" onPress={onSignUpPress} />
       <View style={styles.signInContainer}>
         <Text style={styles.text}>Already have an account?</Text>
-        <Link href="signIn" asChild>
+        <Link href="/(auth)/signIn" asChild>
           <TouchableOpacity>
             <Text style={styles.signInText}> Sign in</Text>
           </TouchableOpacity>

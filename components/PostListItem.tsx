@@ -3,18 +3,9 @@ import { formatDistanceToNowStrict } from 'date-fns';
 import { useRouter } from 'expo-router';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
-type Post = {
-  id: string;
-  created_at: string;
-  title: string;
-  content: string;
-  image?: string;
-  user: {
-    id: string;
-    name: string;
-    image?: string;
-  };
-};
+import { Database } from '../types/supabase';
+
+type Post = Database['public']['Tables']['posts']['Row'];
 
 type PostListItemProps = {
   post: Post;
@@ -27,20 +18,18 @@ export default function PostListItem({ post, isDetailedPost }: PostListItemProps
   if (isDetailedPost) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Image
-            source={{ uri: post.user.image || 'https://notjustdev-dummy.s3.us-east-2.amazonaws.com/avatars/1.jpg' }}
-            style={styles.userImage}
-          />
-          <View>
-            <Text style={styles.userName}>{post.user.name}</Text>
-            <Text style={styles.timestamp}>
-              {formatDistanceToNowStrict(new Date(post.created_at))}
-            </Text>
-          </View>
+      <View style={styles.header}>
+        <Image
+          source={{ uri: post.users.image || 'https://notjustdev-dummy.s3.us-east-2.amazonaws.com/avatars/1.jpg' }}
+          style={styles.userImage}
+        />
+        <View>
+          <Text style={styles.userName}>{post.users.name}</Text>
+          <Text style={styles.timestamp}>
+            {formatDistanceToNowStrict(new Date(post.created_at))}
+          </Text>
         </View>
-
-        <Text style={styles.content}>{post.content}</Text>
+      </View>        {post.description && <Text style={styles.content}>{post.description}</Text>}
         {post.image && (
           <Image source={{ uri: post.image }} style={styles.postImage} />
         )}
@@ -61,7 +50,7 @@ export default function PostListItem({ post, isDetailedPost }: PostListItemProps
       onPress={() => {
         if (!isDetailedPost) {
           router.push({
-            pathname: "/(protected)/post/[id]",
+            pathname: "/(tabs)/post/[id]",
             params: { id: post.id }
           });
         }
@@ -69,20 +58,22 @@ export default function PostListItem({ post, isDetailedPost }: PostListItemProps
     >
       <View style={styles.header}>
         <Image
-          source={{ uri: post.user.image || 'https://notjustdev-dummy.s3.us-east-2.amazonaws.com/avatars/1.jpg' }}
+          source={{ uri: post.users.image || 'https://notjustdev-dummy.s3.us-east-2.amazonaws.com/avatars/1.jpg' }}
           style={styles.userImage}
         />
         <View>
-          <Text style={styles.userName}>{post.user.name}</Text>
+          <Text style={styles.userName}>{post.users.name}</Text>
           <Text style={styles.timestamp}>
             {formatDistanceToNowStrict(new Date(post.created_at))}
           </Text>
         </View>
       </View>
 
-      <Text style={styles.content} numberOfLines={3}>
-        {post.content}
-      </Text>
+      {post.description && (
+        <Text style={styles.content} numberOfLines={3}>
+          {post.description}
+        </Text>
+      )}
       {post.image && (
         <Image source={{ uri: post.image }} style={styles.postImage} />
       )}
